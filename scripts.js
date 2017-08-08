@@ -234,11 +234,13 @@ const gridController = (() => {
             type === document.querySelector(`input[name="${config.radioInputName}"]:checked`).value
         )[0];
 
+    getGrid = () => gridData;
+
     return {
         clear,
         deactivateMouse: unMountMouseEvents,
         getGridSize,
-        gridData,
+        getGrid,
         init: initialize,
     };
 
@@ -249,13 +251,13 @@ const aStar = (() => {
     let height = 0,
         width = 0,
         tileTypeEnums,
-        grid = null;
+        gridData = null;
 
-    initialize = (config, data) => {
+    initialize = (config, data, enums) => {
         height = config.height;
         width = config.width;
-        tileTypeEnums = config.tileTypeEnums;
-        grid = data;
+        tileTypeEnums = enums;
+        gridData = data;
     };
 
     isCandidateValid = (x,y) => {
@@ -297,13 +299,29 @@ const aStar = (() => {
     };
 
     findStart = () => {
+        for (let column = 0; column < width; column++){
+            for (let row = 0; row < height; row++) {
+                if (gridData[column][row] === tileTypeEnums.START) {
+                    return {x: column, y:row};
+                }
+            }
+        }
+        return null;
+    };
 
+    return {
+        init: initialize,
     };
 
 })();
 
 $('document').ready(function(){
-    let canvas = gridController;
+    const canvas = gridController;
     $('button.clear').click(() => {canvas.clear()});
     canvas.init(config);
+    aStar.init(
+        canvas.getGridSize(),
+        canvas.getGrid(),
+        config.tileTypeEnums
+    );
 });
