@@ -166,30 +166,6 @@ const gridController = (() => {
         Math.floor(mouse.currentPosition.y / config.cellSize)
     ];
 
-    // let pixelMouseHandlers = {
-    //     mouseDown: (event) => {
-    //         mouse.isDown = true;
-    //         setCoordinates(mouse.currentPosition, event);
-    //         let current = mouse.currentPosition;
-    //         context.fillRect(current.x, current.y, 1, 1);
-    //     },
-    //     mouseMove: (event) => {
-    //         if (mouse.isDown) {
-    //             mouse.previousPosition.x = mouse.currentPosition.x;
-    //             mouse.previousPosition.y = mouse.currentPosition.y;
-    //             setCoordinates(mouse.currentPosition, event);
-    //             drawLine(
-    //                 mouse.previousPosition.x,
-    //                 mouse.previousPosition.y,
-    //                 mouse.currentPosition.x,
-    //                 mouse.currentPosition.y,
-    //                 'black',
-    //                 2
-    //             );
-    //         }
-    //     },
-    // };
-
     let gridMouseHandlers = {
         mouseDown: (event) => {
             mouse.isDown = true;
@@ -204,14 +180,6 @@ const gridController = (() => {
                     gridMouseHandlers.mouseDown(event);
                 }
             }
-        }
-    };
-
-    activateMouseControls = (gridBased) => {
-        if (gridBased){
-            mountMouseEvents(gridMouseHandlers);
-        } else {
-            mountMouseEvents(pixelMouseHandlers);
         }
     };
 
@@ -234,6 +202,7 @@ const gridController = (() => {
         initGridData();
         render();
         window.addEventListener('mouseup', handleMouseUp);
+        mountMouseEvents(gridMouseHandlers);
     };
 
     clearCanvas = () => {
@@ -265,10 +234,7 @@ const gridController = (() => {
             type === document.querySelector(`input[name="${config.radioInputName}"]:checked`).value
         )[0];
 
-
-
     return {
-        activateMouse: activateMouseControls,
         clear,
         deactivateMouse: unMountMouseEvents,
         getGridSize,
@@ -277,7 +243,6 @@ const gridController = (() => {
     };
 
 })();
-
 
 const aStar = (() => {
 
@@ -331,11 +296,14 @@ const aStar = (() => {
         return nextCandidates;
     };
 
+    findStart = () => {
+
+    };
+
 })();
 
 $('document').ready(function(){
     let canvas = gridController;
     $('button.clear').click(() => {canvas.clear()});
     canvas.init(config);
-    canvas.activateMouse(true);
 });
