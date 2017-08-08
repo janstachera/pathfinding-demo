@@ -1,16 +1,16 @@
 const config = {
     canvasClass: 'drawArea',
-    cellSize: 20
-};
-
-const tileTypeEnums = {
-    CANDIDATE_NEW: 'CANDIDATE_NEW',
-    CANDIDATE_OLD: 'CANDIDATE_OLD',
-    DESTINATION: 'DESTINATION',
-    EMPTY: 'EMPTY',
-    ORIGIN: 'ORIGIN',
-    PATH: 'PATH',
-    WALL: 'WALL',
+    cellSize: 20,
+    radioInputName: 'gridInput',
+    tileTypeEnums: {
+        CANDIDATE_NEW: 'CANDIDATE_NEW',
+        CANDIDATE_OLD: 'CANDIDATE_OLD',
+        DESTINATION: 'DESTINATION',
+        EMPTY: 'EMPTY',
+        START: 'START',
+        PATH: 'PATH',
+        WALL: 'WALL',
+    },
 };
 
 setDefault = (argument, defaultValue) =>
@@ -24,6 +24,7 @@ const gridController = (() => {
         context = null,
         config = null,
         gridData = null,
+        tileTypeEnums = null,
         mouse = {
             isDown: false,
             currentPosition: {
@@ -58,7 +59,7 @@ const gridController = (() => {
                 return 'purple';
             case tileTypeEnums.EMPTY:
                 return 'white';
-            case tileTypeEnums.ORIGIN:
+            case tileTypeEnums.START:
                 return 'blue';
             case tileTypeEnums.PATH:
                 return 'green';
@@ -69,9 +70,34 @@ const gridController = (() => {
         }
     };
 
+    removeUniqueFromGrid = (type) => {
+        gridData.map((column, columnIndex) => {
+            column.map((element, rowIndex) => {
+                if (gridData[columnIndex][rowIndex] === type) {
+                    gridData[columnIndex][rowIndex] = tileTypeEnums.EMPTY;
+                }
+            })
+        });
+    };
+
     updateGridData = (x, y, type) => {
         if (gridData[x][y] !== type) {
-            gridData[x][y] = type;
+            switch(type){
+                case tileTypeEnums.WALL:
+                case tileTypeEnums.EMPTY:
+                case tileTypeEnums.CANDIDATE_NEW:
+                case tileTypeEnums.CANDIDATE_OLD:
+                case tileTypeEnums.PATH:
+                    gridData[x][y] = type;
+                    break;
+                case tileTypeEnums.START:
+                case tileTypeEnums.DESTINATION:
+                    removeUniqueFromGrid(type);
+                    gridData[x][y] = type;
+                    break;
+                default:
+                    throw('Invalid input type!');
+            }
             render();
         }
     };
@@ -83,9 +109,9 @@ const gridController = (() => {
     };
 
     checkPositionOnCanvas = (event) => [
-            Math.floor((event.pageX - event.target.offsetLeft)),
-            Math.floor((event.pageY - event.target.offsetTop))
-        ];
+        Math.floor((event.pageX - event.target.offsetLeft)),
+        Math.floor((event.pageY - event.target.offsetTop))
+    ];
 
     setCoordinates = (coords, event) => {
         [coords.x, coords.y] = checkPositionOnCanvas(event);
@@ -140,35 +166,35 @@ const gridController = (() => {
         Math.floor(mouse.currentPosition.y / config.cellSize)
     ];
 
-    let pixelMouseHandlers = {
-        mouseDown: (event) => {
-            mouse.isDown = true;
-            setCoordinates(mouse.currentPosition, event);
-            let current = mouse.currentPosition;
-            context.fillRect(current.x, current.y, 1, 1);
-        },
-        mouseMove: (event) => {
-            if (mouse.isDown) {
-                mouse.previousPosition.x = mouse.currentPosition.x;
-                mouse.previousPosition.y = mouse.currentPosition.y;
-                setCoordinates(mouse.currentPosition, event);
-                drawLine(
-                    mouse.previousPosition.x,
-                    mouse.previousPosition.y,
-                    mouse.currentPosition.x,
-                    mouse.currentPosition.y,
-                    'black',
-                    2
-                );
-            }
-        },
-    };
+    // let pixelMouseHandlers = {
+    //     mouseDown: (event) => {
+    //         mouse.isDown = true;
+    //         setCoordinates(mouse.currentPosition, event);
+    //         let current = mouse.currentPosition;
+    //         context.fillRect(current.x, current.y, 1, 1);
+    //     },
+    //     mouseMove: (event) => {
+    //         if (mouse.isDown) {
+    //             mouse.previousPosition.x = mouse.currentPosition.x;
+    //             mouse.previousPosition.y = mouse.currentPosition.y;
+    //             setCoordinates(mouse.currentPosition, event);
+    //             drawLine(
+    //                 mouse.previousPosition.x,
+    //                 mouse.previousPosition.y,
+    //                 mouse.currentPosition.x,
+    //                 mouse.currentPosition.y,
+    //                 'black',
+    //                 2
+    //             );
+    //         }
+    //     },
+    // };
 
     let gridMouseHandlers = {
         mouseDown: (event) => {
             mouse.isDown = true;
             setCoordinates(mouse.currentPosition, event);
-            updateGridData(...currentGridPosition(), tileTypeEnums.WALL);
+            updateGridData(...currentGridPosition(), getInputType());
         },
         mouseMove: (event) => {
             if (mouse.isDown) {
@@ -203,6 +229,7 @@ const gridController = (() => {
 
     initialize = (configObj) => {
         config = configObj;
+        tileTypeEnums = configObj.tileTypeEnums;
         findCanvas(config.canvasClass);
         initGridData();
         render();
@@ -233,27 +260,77 @@ const gridController = (() => {
         height: Math.ceil(canvas.height / config.cellSize),
     });
 
+    getInputType = () =>
+        Object.keys(tileTypeEnums).filter(type =>
+            type === document.querySelector(`input[name="${config.radioInputName}"]:checked`).value
+        )[0];
+
+
+
     return {
         activateMouse: activateMouseControls,
         clear,
         deactivateMouse: unMountMouseEvents,
         getGridSize,
-        init: initialize
+        gridData,
+        init: initialize,
     };
-    
+
 })();
+
 
 const aStar = (() => {
 
     let height = 0,
         width = 0,
+        tileTypeEnums,
         grid = null;
 
     initialize = (config, data) => {
         height = config.height;
         width = config.width;
+        tileTypeEnums = config.tileTypeEnums;
         grid = data;
     };
+
+    isCandidateValid = (x,y) => {
+        return (
+            (
+                (grid[x][y] === tileTypeEnums.EMPTY)
+                || (grid[x][y] === tileTypeEnums.DESTINATION)
+            )
+            && (x+1 < width)
+            && (x-1 >= 0)
+            && (y+1 < height)
+            && (y-1 >= 0)
+        );
+    };
+
+    getNextCandidates = (x, y) => {
+        let nextCandidates = [];
+        if (isCandidateValid(x, y-1)) nextCandidates.push({
+            x,
+            y: y-1,
+            cost: null,
+        });
+        if (isCandidateValid(x-1, y)) nextCandidates.push({
+            x: x-1,
+            y,
+            cost: null,
+        });
+        if (isCandidateValid(x, y+1)) nextCandidates.push({
+            x,
+            y: y+1,
+            cost: null,
+        });
+        if (isCandidateValid(x+1, y)) nextCandidates.push({
+            x: x+1,
+            y,
+            cost: null,
+        });
+        return nextCandidates;
+    };
+
 })();
 
 $('document').ready(function(){

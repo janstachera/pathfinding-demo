@@ -3,7 +3,7 @@
     <link href="./style.css" rel="stylesheet" type="text/css">
     <title>Pathfinding demo</title>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
-    <script src="canvas.js"></script>
+    <script src="scripts.js"></script>
 </head>
 <body>
     <canvas
@@ -12,6 +12,14 @@
             height="600"
     >
     </canvas>
-    <button class="clear">Clear</button>
+    <div class="controls">
+        <form class="inputSelect">
+            <input type="radio" name="gridInput" value="WALL" checked>Wall<br />
+            <input type="radio" name="gridInput" value="EMPTY">Empty<br />
+            <input type="radio" name="gridInput" value="START">Start<br />
+            <input type="radio" name="gridInput" value="DESTINATION">Destination<br />
+        </form>
+        <button class="clear">Clear</button>
+    </div>
 </body>
 </html>

@@ -5,3 +5,9 @@ canvas {
     height: 600px;
     width: 600px;
 }
+
+div.controls {
+    display: inline-block;
+    margin: 10px;
+    vertical-align: top;
+}
