@@ -1,6 +1,6 @@
 const config = {
     canvasClass: 'drawArea',
-    cellSize: 8,
+    cellSize: 12,
     radioInputName: 'gridInput',
     heuristicRadioName: 'heuristics',
     tileTypeEnums: {
@@ -475,16 +475,15 @@ const aStar = (() => {
 })();
 
 $('document').ready(function(){
-    const canvas = gridController;
-    $('button.clear').click(() => {canvas.clear(); aStar.stop();});
+    $('button.clear').click(() => { gridController.clear(); aStar.stop(); });
     $('button.start').click(aStar.start);
     $('button.restore').click(aStar.restore);
-    canvas.init(config);
+    gridController.init(config);
     aStar.init(
-        canvas.getGridSize(),
-        canvas.getGrid(),
+        gridController.getGridSize(),
+        gridController.getGrid(),
         config.tileTypeEnums,
-        canvas.updateGridData,
-        canvas.forceRender,
+        gridController.updateGridData,
+        gridController.forceRender,
     );
 });

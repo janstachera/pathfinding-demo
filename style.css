@@ -11,3 +11,7 @@ div.controls {
     margin: 10px;
     vertical-align: top;
 }
+
+div.buttons {
+    margin: 10px 0;
+}
