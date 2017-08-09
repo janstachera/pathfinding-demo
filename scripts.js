@@ -241,6 +241,7 @@ const gridController = (() => {
         deactivateMouse: unMountMouseEvents,
         getGridSize,
         getGrid,
+        updateGridData,
         init: initialize,
     };
 
@@ -251,57 +252,121 @@ const aStar = (() => {
     let height = 0,
         width = 0,
         tileTypeEnums,
-        gridData = null;
+        gridData = null,
+        candidates = [],
+        oldCandidates = [],
+        updateGridData = null,
+        keepGoing = true;
 
-    initialize = (config, data, enums) => {
+    initialize = (config, data, enums, gridUpdate) => {
         height = config.height;
         width = config.width;
         tileTypeEnums = enums;
         gridData = data;
+        updateGridData = gridUpdate;
+    };
+
+    candidateConstructor = (x, y, baseCost, totalCost, ancestor) => ({
+        x,
+        y,
+        baseCost,
+        totalCost,
+        ancestor,
+    });
+
+    costFunction = (prevCost) => prevCost + 1;
+
+    heuristic = () => 0;
+
+    endFound = (ancestor) => {
+        keepGoing = false;
+        updateGridData(ancestor.x, ancestor.y, tileTypeEnums.WALL);
+        let tempAncestor = ancestor;
+        while(tempAncestor.ancestor !== null) {
+            updateGridData(tempAncestor.x, tempAncestor.y, tileTypeEnums.PATH);
+            tempAncestor = tempAncestor.ancestor;
+        }
     };
 
     isCandidateValid = (x,y) => {
         return (
-            (
-                (grid[x][y] === tileTypeEnums.EMPTY)
-                || (grid[x][y] === tileTypeEnums.DESTINATION)
+            (x < width)
+            && (x >= 0)
+            && (y < height)
+            && (y >= 0)
+            && (
+                (gridData[x][y] === tileTypeEnums.EMPTY)
+                || (gridData[x][y] === tileTypeEnums.DESTINATION)
             )
-            && (x+1 < width)
-            && (x-1 >= 0)
-            && (y+1 < height)
-            && (y-1 >= 0)
         );
     };
 
-    getNextCandidates = (x, y) => {
+    isCandidateTheEnd = (x,y) => gridData[x][y] === tileTypeEnums.DESTINATION;
+
+    processCandidate = (x, y, ancestor, nextCandidates) => {
+        if (isCandidateValid(x, y)) {
+            if (isCandidateTheEnd(x,y)) {
+                endFound(ancestor);
+            } else {
+                nextCandidates.push(
+                    candidateConstructor(
+                        x,
+                        y,
+                        costFunction(ancestor.baseCost),
+                        costFunction(ancestor.baseCost) + heuristic(x, y),
+                        ancestor,
+                    )
+                )
+            }
+        }
+    };
+
+    getNextCandidates = (ancestor) => {
         let nextCandidates = [];
-        if (isCandidateValid(x, y-1)) nextCandidates.push({
-            x,
-            y: y-1,
-            cost: null,
-        });
-        if (isCandidateValid(x-1, y)) nextCandidates.push({
-            x: x-1,
-            y,
-            cost: null,
-        });
-        if (isCandidateValid(x, y+1)) nextCandidates.push({
-            x,
-            y: y+1,
-            cost: null,
-        });
-        if (isCandidateValid(x+1, y)) nextCandidates.push({
-            x: x+1,
-            y,
-            cost: null,
-        });
+        processCandidate(ancestor.x, ancestor.y-1, ancestor, nextCandidates);
+        processCandidate(ancestor.x-1, ancestor.y, ancestor, nextCandidates);
+        processCandidate(ancestor.x, ancestor.y+1, ancestor, nextCandidates);
+        processCandidate(ancestor.x+1, ancestor.y, ancestor, nextCandidates);
         return nextCandidates;
     };
 
-    findStart = () => {
+    isCandidateInList = (x, y, list) =>
+        list.findIndex(checked =>
+            ((checked.x === x) && (checked.y === y))
+        ) >= 0;
+
+    chooseNextCandidate = () => {
+        if (candidates.length > 0) {
+            const nextCandidates = getNextCandidates(
+                candidates[0]
+            );
+            if (!keepGoing) { return; }
+            if (gridData[candidates[0].x][candidates[0].y] !== tileTypeEnums.START) {
+                updateGridData(candidates[0].x, candidates[0].y, tileTypeEnums.CANDIDATE_OLD);
+            }
+            oldCandidates.push(candidates.shift());
+            nextCandidates.map((nextCandidate) => {
+                if (isCandidateInList(nextCandidate.x, nextCandidate.y, oldCandidates)) { return; }
+                if (isCandidateInList(nextCandidate.x, nextCandidate.y, candidates)) {
+                    const indexToRemove = candidates.findIndex((candidate) =>
+                        ((candidate.x === nextCandidate.x) && (candidate.y === nextCandidate.y))
+                    );
+                    oldCandidates.push(candidates.splice(indexToRemove, 1));
+                }
+                const index = candidates.findIndex((candidate) =>
+                    candidate.totalCost >= nextCandidate.totalCost
+                );
+                candidates.splice((index >= 0 ? index : candidates.length - 1), 0, nextCandidate);
+                updateGridData(nextCandidate.x, nextCandidate.y, tileTypeEnums.CANDIDATE_NEW);
+            });
+            setTimeout(chooseNextCandidate, 10);
+        }
+    };
+
+    findSpecial = (type) => {
         for (let column = 0; column < width; column++){
             for (let row = 0; row < height; row++) {
-                if (gridData[column][row] === tileTypeEnums.START) {
+                if (gridData[column][row] === type) {
                     return {x: column, y:row};
                 }
             }
@@ -309,19 +374,57 @@ const aStar = (() => {
         return null;
     };
 
+    findStart = () => findSpecial(tileTypeEnums.START);
+
+    findEnd = () => findSpecial(tileTypeEnums.DESTINATION);
+
+    resetData = () => {
+        candidates = [];
+        oldCandidates = [];
+        keepGoing = true;
+    };
+
+    startSearching = () => {
+        resetData();
+        const start = findStart();
+        const end = findEnd();
+        if (!start || !end) {
+            console.error('No start and/or end point defined!');
+        } else {
+            candidates.push(
+                candidateConstructor(
+                    start.x,
+                    start.y,
+                    0,
+                    heuristic(start.x, start.y),
+                    null
+                )
+            );
+            chooseNextCandidate();
+        }
+    };
+
+    stop = () => {
+        keepGoing = false;
+    };
+
     return {
         init: initialize,
+        start: startSearching,
+        stop,
     };
 
 })();
 
 $('document').ready(function(){
     const canvas = gridController;
-    $('button.clear').click(() => {canvas.clear()});
+    $('button.clear').click(() => {canvas.clear(); aStar.stop();});
+    $('button.start').click(aStar.start);
     canvas.init(config);
     aStar.init(
         canvas.getGridSize(),
         canvas.getGrid(),
-        config.tileTypeEnums
+        config.tileTypeEnums,
+        canvas.updateGridData
     );
 });
