@@ -14,13 +14,20 @@
     </canvas>
     <div class="controls">
         <form class="inputSelect">
-            <input type="radio" name="gridInput" value="WALL" checked>Wall<br />
+            <input type="radio" name="gridInput" value="WALL" checked label="wall">Wall<br />
             <input type="radio" name="gridInput" value="EMPTY">Empty<br />
             <input type="radio" name="gridInput" value="START">Start<br />
             <input type="radio" name="gridInput" value="DESTINATION">Destination<br />
         </form>
+        <form class="heuristicSelect">
+            <input type="radio" name="heuristics" value="EUCLIDEAN" checked>Euclidean<br />
+            <input type="radio" name="heuristics" value="MANHATTAN">Manhattan<br />
+            <input type="radio" name="heuristics" value="NONE">None<br />
+        </form>
+        <input type="checkbox" name="animate" checked>Animate<br /><br />
         <button class="clear">Clear</button>
         <button class="start">Start</button>
+        <button class="restore">Restore</button>
     </div>
 </body>
 </html>

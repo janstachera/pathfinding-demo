@@ -1,7 +1,8 @@
 const config = {
     canvasClass: 'drawArea',
-    cellSize: 20,
+    cellSize: 8,
     radioInputName: 'gridInput',
+    heuristicRadioName: 'heuristics',
     tileTypeEnums: {
         CANDIDATE_NEW: 'CANDIDATE_NEW',
         CANDIDATE_OLD: 'CANDIDATE_OLD',
@@ -11,12 +12,29 @@ const config = {
         PATH: 'PATH',
         WALL: 'WALL',
     },
+    heuristicEnums: {
+        EUCLIDEAN: 'EUCLIDEAN',
+        MANHATTAN: 'MANHATTAN',
+        NONE: 'NONE',
+    },
 };
 
 setDefault = (argument, defaultValue) =>
     typeof argument === 'undefined'
         ? defaultValue
         : argument;
+
+getInputType = () =>
+    Object.keys(config.tileTypeEnums).filter(type =>
+        type === document.querySelector(`input[name="${config.radioInputName}"]:checked`).value
+    )[0];
+
+getHeuristicType = () =>
+    Object.keys(config.heuristicEnums).filter(type =>
+        type === document.querySelector(`input[name="${config.heuristicRadioName}"]:checked`).value
+    )[0];
+
+getAnimateFlag = () => document.querySelector('input[name="animate"]').checked;
 
 const gridController = (() => {
 
@@ -89,16 +107,17 @@ const gridController = (() => {
                 case tileTypeEnums.CANDIDATE_OLD:
                 case tileTypeEnums.PATH:
                     gridData[x][y] = type;
+                    fillGridCell(x, y, tileColorPicker(type));
                     break;
                 case tileTypeEnums.START:
                 case tileTypeEnums.DESTINATION:
                     removeUniqueFromGrid(type);
                     gridData[x][y] = type;
+                    render();
                     break;
                 default:
                     throw('Invalid input type!');
             }
-            render();
         }
     };
 
@@ -118,7 +137,7 @@ const gridController = (() => {
     };
 
     drawLine = (x1, y1, x2, y2, brushColor, brushSize) => {
-        brushColor = setDefault(brushColor, 'lightgrey');
+        brushColor = setDefault(brushColor, '#eee');
         brushSize = setDefault(brushSize, 1);
         context.beginPath();
         context.moveTo(x1, y1);
@@ -229,11 +248,6 @@ const gridController = (() => {
         height: Math.ceil(canvas.height / config.cellSize),
     });
 
-    getInputType = () =>
-        Object.keys(tileTypeEnums).filter(type =>
-            type === document.querySelector(`input[name="${config.radioInputName}"]:checked`).value
-        )[0];
-
     getGrid = () => gridData;
 
     return {
@@ -243,6 +257,7 @@ const gridController = (() => {
         getGrid,
         updateGridData,
         init: initialize,
+        forceRender: render,
     };
 
 })();
@@ -256,14 +271,20 @@ const aStar = (() => {
         candidates = [],
         oldCandidates = [],
         updateGridData = null,
+        endCoords = null,
+        heuristic = null,
+        gridDataBackup = [],
+        forceRender = null,
+        animateFlag = null,
         keepGoing = true;
 
-    initialize = (config, data, enums, gridUpdate) => {
+    initialize = (config, data, enums, gridUpdate, render) => {
         height = config.height;
         width = config.width;
         tileTypeEnums = enums;
         gridData = data;
         updateGridData = gridUpdate;
+        forceRender = render;
     };
 
     candidateConstructor = (x, y, baseCost, totalCost, ancestor) => ({
@@ -276,7 +297,21 @@ const aStar = (() => {
 
     costFunction = (prevCost) => prevCost + 1;
 
-    heuristic = () => 0;
+    heuristicPicker = (heuristicType) => {
+        switch (heuristicType) {
+            case 'EUCLIDEAN':
+                return (x,y) => {
+                    let abs_x = Math.abs(endCoords.x - x);
+                    let abs_y = Math.abs(endCoords.y - y);
+                    return Math.sqrt(abs_x * abs_x + abs_y * abs_y);
+                };
+            case 'MANHATTAN':
+                return (x,y) => Math.abs(x-endCoords.x) + Math.abs(y-endCoords.y);
+            case 'NONE':
+            default:
+                return () => 0;
+        }
+    };
 
     endFound = (ancestor) => {
         keepGoing = false;
@@ -335,15 +370,17 @@ const aStar = (() => {
             ((checked.x === x) && (checked.y === y))
         ) >= 0;
 
+    preserveStartingNode = () => {
+        if (gridData[candidates[0].x][candidates[0].y] !== tileTypeEnums.START) {
+            updateGridData(candidates[0].x, candidates[0].y, tileTypeEnums.CANDIDATE_OLD);
+        }
+    };
+
     chooseNextCandidate = () => {
         if (candidates.length > 0) {
-            const nextCandidates = getNextCandidates(
-                candidates[0]
-            );
+            const nextCandidates = getNextCandidates(candidates[0]);
             if (!keepGoing) { return; }
-            if (gridData[candidates[0].x][candidates[0].y] !== tileTypeEnums.START) {
-                updateGridData(candidates[0].x, candidates[0].y, tileTypeEnums.CANDIDATE_OLD);
-            }
+            preserveStartingNode();
             oldCandidates.push(candidates.shift());
             nextCandidates.map((nextCandidate) => {
                 if (isCandidateInList(nextCandidate.x, nextCandidate.y, oldCandidates)) { return; }
@@ -353,13 +390,21 @@ const aStar = (() => {
                     );
                     oldCandidates.push(candidates.splice(indexToRemove, 1));
                 }
-                const index = candidates.findIndex((candidate) =>
-                    candidate.totalCost >= nextCandidate.totalCost
-                );
-                candidates.splice((index >= 0 ? index : candidates.length - 1), 0, nextCandidate);
+                const index = candidates.findIndex((candidate) => {
+                    return candidate.totalCost > nextCandidate.totalCost
+                });
+                if (index >= 0) {
+                    candidates.splice(index, 0, nextCandidate);
+                } else {
+                    candidates.push(nextCandidate);
+                }
                 updateGridData(nextCandidate.x, nextCandidate.y, tileTypeEnums.CANDIDATE_NEW);
             });
-            setTimeout(chooseNextCandidate, 10);
+            if (animateFlag) {
+                setTimeout(chooseNextCandidate, 5);
+            } else {
+                chooseNextCandidate();
+            }
         }
     };
 
@@ -385,12 +430,16 @@ const aStar = (() => {
     };
 
     startSearching = () => {
+        animateFlag = getAnimateFlag();
+        heuristic = heuristicPicker(getHeuristicType());
+        gridDataBackup = gridData.map((column, index) => gridDataBackup[index] = column.slice());
         resetData();
         const start = findStart();
         const end = findEnd();
         if (!start || !end) {
             console.error('No start and/or end point defined!');
         } else {
+            endCoords = end;
             candidates.push(
                 candidateConstructor(
                     start.x,
@@ -408,10 +457,19 @@ const aStar = (() => {
         keepGoing = false;
     };
 
+    restore = () => {
+        stop();
+        gridData.map((column, index) => {
+            gridData[index] = gridDataBackup[index];
+        });
+        forceRender();
+    };
+
     return {
         init: initialize,
         start: startSearching,
         stop,
+        restore,
     };
 
 })();
@@ -420,11 +478,13 @@ $('document').ready(function(){
     const canvas = gridController;
     $('button.clear').click(() => {canvas.clear(); aStar.stop();});
     $('button.start').click(aStar.start);
+    $('button.restore').click(aStar.restore);
     canvas.init(config);
     aStar.init(
         canvas.getGridSize(),
         canvas.getGrid(),
         config.tileTypeEnums,
-        canvas.updateGridData
+        canvas.updateGridData,
+        canvas.forceRender,
     );
 });
