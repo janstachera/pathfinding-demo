@@ -139,20 +139,20 @@ const gridController = (() => {
     drawLine = (x1, y1, x2, y2, brushColor, brushSize) => {
         brushColor = setDefault(brushColor, '#eee');
         brushSize = setDefault(brushSize, 1);
-        context.beginPath();
         context.moveTo(x1, y1);
         context.lineTo(x2, y2);
         context.strokeStyle = brushColor;
         context.lineWidth = brushSize;
         context.stroke();
-        context.closePath();
     };
 
     drawGrid = (cellSize) => {
+        context.beginPath();
         for(let i = cellSize, canvasSize = canvas.width; i < canvasSize; i += cellSize){
             drawLine(0, i, canvasSize, i);
             drawLine(i, 0, i, canvasSize);
         }
+        context.closePath();
     };
 
     render = () => {
