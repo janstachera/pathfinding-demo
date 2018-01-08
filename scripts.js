@@ -1,6 +1,6 @@
 const config = {
     canvasClass: 'drawArea',
-    cellSize: 12,
+    cellSize: 5,
     radioInputName: 'gridInput',
     heuristicRadioName: 'heuristics',
     tileTypeEnums: {
@@ -276,7 +276,8 @@ const aStar = (() => {
         gridDataBackup = [],
         forceRender = null,
         animateFlag = null,
-        keepGoing = true;
+        keepGoing = true,
+        stepCounter = 0;
 
     initialize = (config, data, enums, gridUpdate, render) => {
         height = config.height;
@@ -400,8 +401,9 @@ const aStar = (() => {
                 }
                 updateGridData(nextCandidate.x, nextCandidate.y, tileTypeEnums.CANDIDATE_NEW);
             });
-            if (animateFlag) {
-                setTimeout(chooseNextCandidate, 5);
+            stepCounter++;
+            if (animateFlag && stepCounter % (candidates.length >> 2) === 0) {
+                setTimeout(chooseNextCandidate, 0);
             } else {
                 chooseNextCandidate();
             }
