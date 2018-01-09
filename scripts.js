@@ -53,11 +53,15 @@ const gridController = (() => {
                 x: 0,
                 y: 0
             },
-            currentGridPosition: {
+            recordedGridPosition: {
                 x: null,
                 y: null
             }
         };
+
+    getCurrentGridPositionAsArray = () => (
+        [mouse.recordedGridPosition.x, mouse.recordedGridPosition.y]
+    );
 
     initGridData = () => {
         let { height, width } = getGridSize();
@@ -185,18 +189,69 @@ const gridController = (() => {
         Math.floor(mouse.currentPosition.y / config.cellSize)
     ];
 
+    setCurrentGridPosition = () => {
+        [mouse.recordedGridPosition.x, mouse.recordedGridPosition.y] = currentGridPosition();
+    };
+
+    handlePositionGap = (oldGridPos, currGridPos, posDiff) => {
+        const eqSlope = (currGridPos[1] - oldGridPos[1]) / (currGridPos[0] - oldGridPos[0]);
+        const eqLineY = (x) => // equation for y with respect to x
+            eqSlope * x - eqSlope * oldGridPos[0] + oldGridPos[1];
+        const eqLineX = (y) => // equation for x with respect to y
+            (y - oldGridPos[1]) / eqSlope + oldGridPos[0];
+        const tilesToFill = [];
+        if (posDiff.x > 1) {
+            const smallerX = oldGridPos[0] < currGridPos[0] ? oldGridPos[0] : currGridPos[0];
+            for (let i = 1; i < posDiff.x; i++) {
+                let tileCandidate = {
+                    x: smallerX + i,
+                    y: Math.round(eqLineY(smallerX + i)),
+                };
+                if (!tilesToFill.some(tile => (tile.x === tileCandidate.x && tile.y === tileCandidate.y))) {
+                    tilesToFill.push(tileCandidate);
+                }
+            }
+        }
+        if (posDiff.y > 1) {
+            const smallerY = oldGridPos[1] < currGridPos[1] ? oldGridPos[1] : currGridPos[1];
+            for (let i = 1; i < posDiff.y; i++) {
+                let tileCandidate = {
+                    x: Math.round(eqLineX(smallerY + i)),
+                    y: smallerY + i,
+                };
+                if (!tilesToFill.some(tile => (tile.x === tileCandidate.x && tile.y === tileCandidate.y))) {
+                    tilesToFill.push(tileCandidate);
+                }
+            }
+        }
+        tilesToFill.map((tile) => {
+            updateGridData(tile.x, tile.y, getInputType());
+        });
+    };
+
     let gridMouseHandlers = {
         mouseDown: (event) => {
             mouse.isDown = true;
             setCoordinates(mouse.currentPosition, event);
+            setCurrentGridPosition();
             updateGridData(...currentGridPosition(), getInputType());
         },
         mouseMove: (event) => {
             if (mouse.isDown) {
-                let oldGridPos = [mouse.currentGridPosition.x, mouse.currentGridPosition.y];
-                let currentGridPos = currentGridPosition();
-                if (!((oldGridPos[0] === currentGridPos[0]) && (oldGridPos[1] === currentGridPos[1]))){
-                    gridMouseHandlers.mouseDown(event);
+                setCoordinates(mouse.currentPosition, event);
+                let oldGridPos = [mouse.recordedGridPosition.x, mouse.recordedGridPosition.y];
+                let currGridPos = currentGridPosition();
+                const posDiff = {
+                    x: Math.abs(oldGridPos[0] - currGridPos[0]),
+                    y: Math.abs(oldGridPos[1] - currGridPos[1]),
+                };
+                if (!(posDiff.x === 0 && posDiff.y === 0)){
+                    if (posDiff.x > 1 || posDiff.y > 1){
+                        handlePositionGap(oldGridPos, currGridPos, posDiff);
+                        gridMouseHandlers.mouseDown(event);
+                    } else {
+                        gridMouseHandlers.mouseDown(event);
+                    }
                 }
             }
         }
