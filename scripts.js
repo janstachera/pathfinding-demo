@@ -479,11 +479,15 @@ const aStar = (() => {
                 updateGridData(nextCandidate.x, nextCandidate.y, tileTypeEnums.CANDIDATE_NEW);
             });
             stepCounter++;
-            if (animateFlag && stepCounter % (candidates.length >> 2) === 0) {
-                setTimeout(chooseNextCandidate, 0);
-            } else {
-                chooseNextCandidate();
+            if (animateFlag) {
+                if (stepCounter % (candidates.length >> 2) === 0) {
+                    setTimeout(chooseNextCandidate, 0);
+                } else {
+                    chooseNextCandidate();
+                }
             }
+        } else {
+            keepGoing = false;
         }
     };
 
@@ -529,7 +533,13 @@ const aStar = (() => {
                     null
                 )
             );
-            chooseNextCandidate();
+            if (animateFlag) {
+                chooseNextCandidate();
+            } else {
+                while (keepGoing) {
+                    chooseNextCandidate()
+                }
+            }
         }
     };
 
