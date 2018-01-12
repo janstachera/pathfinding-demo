@@ -93,13 +93,21 @@ const gridController = (() => {
     };
 
     removeUniqueFromGrid = (type) => {
-        gridData.map((column, columnIndex) => {
-            column.map((element, rowIndex) => {
+        let coordinates = null;
+        gridData.some((column, columnIndex) => {
+            column.some((element, rowIndex) => {
                 if (gridData[columnIndex][rowIndex] === type) {
                     gridData[columnIndex][rowIndex] = tileTypeEnums.EMPTY;
+                    coordinates = {
+                        x: columnIndex,
+                        y: rowIndex,
+                    };
+                    return true;
                 }
+                return false;
             })
         });
+        return coordinates;
     };
 
     updateGridData = (x, y, type) => {
@@ -111,13 +119,16 @@ const gridController = (() => {
                 case tileTypeEnums.CANDIDATE_OLD:
                 case tileTypeEnums.PATH:
                     gridData[x][y] = type;
-                    fillGridCell(x, y, tileColorPicker(type));
+                    fillGridCell(x, y, type);
                     break;
                 case tileTypeEnums.START:
                 case tileTypeEnums.DESTINATION:
-                    removeUniqueFromGrid(type);
+                    const coordinates = removeUniqueFromGrid(type);
+                    if (coordinates) {
+                        fillGridCell(coordinates.x, coordinates.y, tileTypeEnums.EMPTY);
+                    }
                     gridData[x][y] = type;
-                    render();
+                    fillGridCell(x, y, type);
                     break;
                 default:
                     throw('Invalid input type!');
@@ -151,12 +162,12 @@ const gridController = (() => {
     };
 
     drawGrid = (cellSize) => {
-        context.beginPath();
-        for(let i = cellSize, canvasSize = canvas.width; i < canvasSize; i += cellSize){
-            drawLine(0, i, canvasSize, i);
-            drawLine(i, 0, i, canvasSize);
-        }
-        context.closePath();
+        // context.beginPath();
+        // for(let i = cellSize, canvasSize = canvas.width; i < canvasSize; i += cellSize){
+        //     drawLine(0, i, canvasSize, i);
+        //     drawLine(i, 0, i, canvasSize);
+        // }
+        // context.closePath();
     };
 
     render = () => {
@@ -164,19 +175,25 @@ const gridController = (() => {
         drawGrid(config.cellSize);
         gridData.forEach((column, columnIndex) => {
             column.forEach((cell, rowIndex) => {
-                fillGridCell(columnIndex, rowIndex, tileColorPicker(cell));
+                fillGridCell(columnIndex, rowIndex, cell);
             });
         });
     };
 
-    fillGridCell = (cellX, cellY, fillColor) => {
+    fillGridCell = (cellX, cellY, type) => {
+        fillColor = tileColorPicker(type);
         context.fillStyle = setDefault(fillColor, 'black');
         context.fillRect(
-            cellX * config.cellSize,
-            cellY * config.cellSize,
+            cellX * config.cellSize - 0.5,
+            cellY * config.cellSize - 0.5,
             config.cellSize,
             config.cellSize
         );
+        // if (type === tileTypeEnums.EMPTY) {
+        //     context.strokeStyle = '#eee';
+        //     context.lineWidth = 1;
+        //     context.stroke();
+        // }
     };
 
     handleMouseUp = () => {
@@ -339,6 +356,7 @@ const aStar = (() => {
         width = config.width;
         tileTypeEnums = enums;
         gridData = data;
+        gridDataBackup = gridData.map((column, index) => gridDataBackup[index] = column.slice());
         updateGridData = gridUpdate;
         forceRender = render;
     };
@@ -498,6 +516,7 @@ const aStar = (() => {
         const start = findStart();
         const end = findEnd();
         if (!start || !end) {
+            enableStart();
             console.error('No start and/or end point defined!');
         } else {
             endCoords = end;
@@ -550,8 +569,9 @@ const clickClear = () => {
 };
 
 const clickStart = () => {
-    aStar.start();
+    $('button.restore').attr("disabled", false);
     disableStart();
+    aStar.start();
 };
 
 const clickRestore = () => {
