@@ -7,14 +7,14 @@
 </head>
 <body>
     <canvas
-            class="drawArea"
-            width="600"
-            height="600"
+        class="drawArea"
+        width="600"
+        height="600"
     >
     </canvas>
     <div class="controls">
         <form class="inputSelect">
-            <input type="radio" name="gridInput" value="WALL" checked label="wall">Wall<br />
+            <input type="radio" name="gridInput" value="WALL" checked>Wall<br />
             <input type="radio" name="gridInput" value="EMPTY">Empty<br />
             <input type="radio" name="gridInput" value="START">Start<br />
             <input type="radio" name="gridInput" value="DESTINATION">Destination<br />
@@ -27,6 +27,11 @@
         <form class="animateSwitch">
             <input type="checkbox" name="animate" checked>Animate
         </form>
+        <!--<div class="gridSettings">-->
+            <!--<div>Width: <input type="number" id="gridWidth" value="600" step="100"></div>-->
+            <!--<div>Height: <input type="number" id="gridHeight" value="600" step="100"></div>-->
+            <!--<div>Cell size: <select id="cellSize"></select></div>-->
+        <!--</div>-->
         <div class="buttons">
             <button class="clear">Clear</button>
             <button class="start">Start</button>

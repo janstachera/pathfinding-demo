@@ -15,3 +15,12 @@ div.controls {
 div.buttons {
     margin: 10px 0;
 }
+
+.gridSettings > div {
+    display: flex;
+    justify-content: space-between;
+}
+
+.gridSettings > div input, .gridSettings > div select{
+    width: 70px;
+}

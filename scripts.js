@@ -1,6 +1,6 @@
 const config = {
     canvasClass: 'drawArea',
-    cellSize: 5,
+    cellSize: 4,
     radioInputName: 'gridInput',
     heuristicRadioName: 'heuristics',
     tileTypeEnums: {
@@ -435,11 +435,15 @@ const aStar = (() => {
     chooseNextCandidate = () => {
         if (candidates.length > 0) {
             const nextCandidates = getNextCandidates(candidates[0]);
-            if (!keepGoing) { return; }
+            if (!keepGoing) {
+                return;
+            }
             preserveStartingNode();
             oldCandidates.push(candidates.shift());
             nextCandidates.map((nextCandidate) => {
-                if (isCandidateInList(nextCandidate.x, nextCandidate.y, oldCandidates)) { return; }
+                if (isCandidateInList(nextCandidate.x, nextCandidate.y, oldCandidates)) {
+                    return;
+                }
                 if (isCandidateInList(nextCandidate.x, nextCandidate.y, candidates)) {
                     const indexToRemove = candidates.findIndex((candidate) =>
                         ((candidate.x === nextCandidate.x) && (candidate.y === nextCandidate.y))
@@ -531,10 +535,34 @@ const aStar = (() => {
 
 })();
 
+const disableStart = () => {
+    $('button.start').attr("disabled", true);
+};
+
+const enableStart = () => {
+    $('button.start').attr("disabled", false);
+};
+
+const clickClear = () => {
+    gridController.clear();
+    aStar.stop();
+    enableStart();
+};
+
+const clickStart = () => {
+    aStar.start();
+    disableStart();
+};
+
+const clickRestore = () => {
+    aStar.restore();
+    enableStart();
+};
+
 $('document').ready(function(){
-    $('button.clear').click(() => { gridController.clear(); aStar.stop(); });
-    $('button.start').click(aStar.start);
-    $('button.restore').click(aStar.restore);
+    $('button.clear').click(clickClear);
+    $('button.start').click(clickStart);
+    $('button.restore').click(clickRestore);
     gridController.init(config);
     aStar.init(
         gridController.getGridSize(),
