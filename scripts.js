@@ -43,6 +43,7 @@ const gridController = (() => {
         config = null,
         gridData = null,
         tileTypeEnums = null,
+        gridSize = null,
         mouse = {
             isDown: false,
             currentPosition: {
@@ -111,9 +112,20 @@ const gridController = (() => {
     };
 
     updateGridData = (x, y, type) => {
-        if (gridData[x][y] !== type) {
+        if (gridData[x][y] !== type || type === tileTypeEnums.WALL) {
             switch(type){
                 case tileTypeEnums.WALL:
+                    gridData[x][y] = type;
+                    fillGridCell(x, y, type);
+                    if (x > 0 && y > 0) {
+                        gridData[x-1][y-1] = type;
+                        gridData[x-1][y] = type;
+                        gridData[x][y-1] = type;
+                        fillGridCell(x-1, y-1, type);
+                        fillGridCell(x-1, y, type);
+                        fillGridCell(x, y-1, type);
+                    }
+                    break;
                 case tileTypeEnums.EMPTY:
                 case tileTypeEnums.CANDIDATE_NEW:
                 case tileTypeEnums.CANDIDATE_OLD:
@@ -291,6 +303,7 @@ const gridController = (() => {
         tileTypeEnums = configObj.tileTypeEnums;
         findCanvas(config.canvasClass);
         initGridData();
+        gridSize = getGridSize();
         render();
         window.addEventListener('mouseup', handleMouseUp);
         mountMouseEvents(gridMouseHandlers);
@@ -369,7 +382,7 @@ const aStar = (() => {
         ancestor,
     });
 
-    costFunction = (prevCost) => prevCost + 1;
+    costFunction = (prevCost, diagonal) => diagonal ? prevCost + 1.41 : prevCost + 1;
 
     heuristicPicker = (heuristicType) => {
         switch (heuristicType) {
@@ -412,17 +425,18 @@ const aStar = (() => {
 
     isCandidateTheEnd = (x,y) => gridData[x][y] === tileTypeEnums.DESTINATION;
 
-    processCandidate = (x, y, ancestor, nextCandidates) => {
+    processCandidate = (x, y, ancestor, nextCandidates, diagonal) => {
         if (isCandidateValid(x, y)) {
             if (isCandidateTheEnd(x,y)) {
                 endFound(ancestor);
             } else {
+                const newCost = costFunction(ancestor.baseCost, diagonal);
                 nextCandidates.push(
                     candidateConstructor(
                         x,
                         y,
-                        costFunction(ancestor.baseCost),
-                        costFunction(ancestor.baseCost) + heuristic(x, y),
+                        newCost,
+                        newCost + heuristic(x, y),
                         ancestor,
                     )
                 )
@@ -436,6 +450,10 @@ const aStar = (() => {
         processCandidate(ancestor.x-1, ancestor.y, ancestor, nextCandidates);
         processCandidate(ancestor.x, ancestor.y+1, ancestor, nextCandidates);
         processCandidate(ancestor.x+1, ancestor.y, ancestor, nextCandidates);
+        processCandidate(ancestor.x-1, ancestor.y-1, ancestor, nextCandidates, true);
+        processCandidate(ancestor.x+1, ancestor.y-1, ancestor, nextCandidates, true);
+        processCandidate(ancestor.x+1, ancestor.y+1, ancestor, nextCandidates, true);
+        processCandidate(ancestor.x-1, ancestor.y+1, ancestor, nextCandidates, true);
         return nextCandidates;
     };
 
